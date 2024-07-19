@@ -27,31 +27,39 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # IMAGE SETUP START #
 # micro-ROS-STM32 start #
+# Set up colcon mixin and metadata
 RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository master/index.yaml && \
-    colcon mixin update && \
-    colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
-    colcon metadata update
+  colcon mixin update && \
+  colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
+  colcon metadata update
 
-# Setup workspace and install additional tools
-RUN apt update && \
-    apt install -y wget dos2unix zstd && \
-    rm -rf log/ build/ src/* && \
-    rm -rf /var/lib/apt/lists/* && \
-    wget --no-check-certificate https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
-    tar -xvf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
-    rm -rf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 gcc-arm-none-eabi-10.3-2021.10/share/doc
-    
-# Clone micro-ROS and setup environment
-RUN git clone -b $ROS_DISTRO https://github.com/micro-ROS/micro-ros-build.git src/micro-ros-build && \
-    . /opt/ros/$ROS_DISTRO/setup.sh && \
-    apt update && \
-    apt install -y rsync python3-pip python3-nose clang-format pyflakes3 python3-mypy python3-pytest-mock gperf ros-$ROS_DISTRO-osrf-testing-tools-cpp python3-lttng ros-$ROS_DISTRO-mimick-vendor python3-babeltrace && \
-    rosdep update --rosdistro $ROS_DISTRO && \
-    rosdep install --from-paths src --ignore-src -y && \
-    colcon build && \
-    . install/local_setup.sh && \
-    rm -rf log/ build/ src/* && \
-    rm -rf /var/lib/apt/lists/*
+# Install GCC toolchain for STM32
+WORKDIR /opt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  dos2unix \
+  zstd && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*/apt/lists/* && \
+  wget --no-check-certificate -O /tmp/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
+  tar -jxf /tmp/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 -C /opt/ && \
+  rm -rf /tmp/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
+  chgrp -R internal gcc-arm-none-eabi-10.3-2021.10 && \
+  chmod -R g+rw gcc-arm-none-eabi-10.3-2021.10
+ENV PATH=/opt/gcc-arm-none-eabi-10.3-2021.10/bin:${PATH}
+WORKDIR /root
+
+# Install micro-ros-build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  clang-format \
+  gperf \
+  pyflakes3 \
+  python3-babeltrace \
+  python3-lttng \
+  python3-mypy \
+  python3-nose \
+  python3-pytest-mock \
+  ros-humble-mimick-vendor \
+  ros-humble-osrf-testing-tools-cpp && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*/apt/lists/*
 # micro-ROS-STM32 end #
 # IMAGE SETUP END #
 
