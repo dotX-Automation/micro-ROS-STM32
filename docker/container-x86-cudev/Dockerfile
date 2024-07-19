@@ -26,6 +26,33 @@ ARG USER_UID=1000
 ENV DEBIAN_FRONTEND=noninteractive
 
 # IMAGE SETUP START #
+# micro-ROS-STM32 start #
+RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository master/index.yaml && \
+    colcon mixin update && \
+    colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
+    colcon metadata update
+
+# Setup workspace and install additional tools
+RUN apt update && \
+    apt install -y wget dos2unix zstd && \
+    rm -rf log/ build/ src/* && \
+    rm -rf /var/lib/apt/lists/* && \
+    wget --no-check-certificate https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
+    tar -xvf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
+    rm -rf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 gcc-arm-none-eabi-10.3-2021.10/share/doc
+    
+# Clone micro-ROS and setup environment
+RUN git clone -b $ROS_DISTRO https://github.com/micro-ROS/micro-ros-build.git src/micro-ros-build && \
+    . /opt/ros/$ROS_DISTRO/setup.sh && \
+    apt update && \
+    apt install -y rsync python3-pip python3-nose clang-format pyflakes3 python3-mypy python3-pytest-mock gperf ros-$ROS_DISTRO-osrf-testing-tools-cpp python3-lttng ros-$ROS_DISTRO-mimick-vendor python3-babeltrace && \
+    rosdep update --rosdistro $ROS_DISTRO && \
+    rosdep install --from-paths src --ignore-src -y && \
+    colcon build && \
+    . install/local_setup.sh && \
+    rm -rf log/ build/ src/* && \
+    rm -rf /var/lib/apt/lists/*
+# micro-ROS-STM32 end #
 # IMAGE SETUP END #
 
 # Create a user with Zsh as shell, hashed password, and add it to the sudoers
