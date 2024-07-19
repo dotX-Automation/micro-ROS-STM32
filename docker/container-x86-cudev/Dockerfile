@@ -28,7 +28,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # IMAGE SETUP START #
 # micro-ROS-STM32 start #
 # Set up colcon mixin and metadata
-RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository master/index.yaml && \
+RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
   colcon mixin update && \
   colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
   colcon metadata update
@@ -50,6 +50,7 @@ WORKDIR /root
 # Install micro-ros-build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
   clang-format \
+  clang-tidy \
   gperf \
   pyflakes3 \
   python3-babeltrace \
@@ -60,6 +61,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-humble-mimick-vendor \
   ros-humble-osrf-testing-tools-cpp && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*/apt/lists/*
+
+# Initialize rosdep
+RUN . /opt/ros/humble/setup.sh && \
+  rosdep init && \
+  rosdep update
 # micro-ROS-STM32 end #
 # IMAGE SETUP END #
 
