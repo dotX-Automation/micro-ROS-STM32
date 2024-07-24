@@ -1,4 +1,4 @@
-[submodule "src/micro_ros_setup"]
-	path = src/micro_ros_setup
-	url = git@github.com:micro-ROS/micro_ros_setup.git
+[submodule "tools/micro_ros_stm32cubemx_utils"]
+	path = tools/micro_ros_stm32cubemx_utils
+	url = https://github.com/micro-ROS/micro_ros_stm32cubemx_utils.git
 	branch = humble
