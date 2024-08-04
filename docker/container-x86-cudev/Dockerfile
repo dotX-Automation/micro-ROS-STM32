@@ -62,8 +62,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-humble-osrf-testing-tools-cpp && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*/apt/lists/*
 
-# Initialize rosdep
+# Initialize apt and rosdep
 RUN . /opt/ros/humble/setup.sh && \
+  apt-get update && \
   rosdep init && \
   rosdep update
 # micro-ROS-STM32 end #
