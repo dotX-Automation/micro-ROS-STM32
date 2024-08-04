@@ -36,7 +36,6 @@ RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mix
 # Install GCC toolchain for STM32
 WORKDIR /opt
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  dos2unix \
   zstd && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*/apt/lists/* && \
   wget --no-check-certificate -O /tmp/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2 && \
@@ -47,7 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PATH=/opt/gcc-arm-none-eabi-10.3-2021.10/bin:${PATH}
 WORKDIR /root
 
-# Install micro-ros-build dependencies
+# Install micro-ros-setup dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
   clang-format \
   clang-tidy \
