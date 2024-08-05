@@ -44,7 +44,7 @@ if [[ "$(pwd)" != "/home/neo/workspace" ]]; then
 fi
 
 # Setup environment
-export MICROROS_LIBRARY_FOLDER=micro_ros_stm32cubemx_utils/microros_static_library
+export MICROROS_LIBRARY_FOLDER=/home/neo/workspace/tools/micro_ros_stm32cubemx_utils/microros_static_library
 export BASE_PATH=$MICROROS_LIBRARY_FOLDER
 unset RMW_IMPLEMENTATION
 
@@ -82,7 +82,7 @@ pushd firmware/mcu_ws > /dev/null
 popd > /dev/null
 
 # Try to retrieve CFLAGS from Makefile
-pushd "$1" > /dev/null
+pushd "/home/neo/workspace/$1" > /dev/null
   ret_cflags=$(make print_cflags)
   RET_CODE=$?
   export RET_CFLAGS=$ret_cflags

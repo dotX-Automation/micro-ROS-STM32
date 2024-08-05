@@ -66,6 +66,20 @@ RUN . /opt/ros/humble/setup.sh && \
   apt-get update && \
   rosdep init && \
   rosdep update
+  
+# Install stm32 cube ide and cube mx
+WORKDIR /opt
+RUN wget -U "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" -O stm32cubemx.zip "https://www.st.com/content/ccc/resource/technical/software/sw_development_suite/group1/6c/0c/a3/4c/ed/09/48/21/stm32cubemx-lin-v6-12-0/files/stm32cubemx-lin-v6-12-0.zip/jcr:content/translations/en.stm32cubemx-lin-v6-12-0.zip"
+RUN unzip stm32cubemx.zip && \
+    rm stm32cubemx.zip
+RUN chmod +x SetupSTM32CubeMX-6.12.0
+
+RUN wget -U "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" -O stm32cubeide.zip "https://www.st.com/content/ccc/resource/technical/software/sw_development_suite/group1/f0/75/4c/32/97/a0/4d/48/stm32cubeide-deb/files/st-stm32cubeide_1.16.0_21983_20240628_1741_amd64.deb_bundle.sh.zip/jcr:content/translations/en.st-stm32cubeide_1.16.0_21983_20240628_1741_amd64.deb_bundle.sh.zip"
+RUN unzip stm32cubeide.zip && \
+    rm stm32cubeide.zip
+RUN chmod +x st-stm32cubeide_1.16.0_21983_20240628_1741_amd64.deb_bundle.sh && \
+    ./st-stm32cubeide_1.16.0_21983_20240628_1741_amd64.deb_bundle.sh 
+WORKDIR /root
 # micro-ROS-STM32 end #
 # IMAGE SETUP END #
 
