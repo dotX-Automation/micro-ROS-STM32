@@ -114,6 +114,20 @@ ros2 run micro_ros_setup build_firmware.sh /home/neo/workspace/bin/library_gener
 find firmware/build/include/ -name "*.c" -delete
 rm -rf $BASE_PATH/libmicroros || true
 mkdir -p $BASE_PATH/libmicroros/microros_include
+
+# Controlla ed elimina eventuali directory duplicate
+for dir in firmware/build/include/*; do
+  if [[ -d "$dir" ]]; then
+    inner_dir="$dir/$(basename "$dir")"
+    if [[ -d "$inner_dir" ]]; then
+      echo "Found duplicate directory: $inner_dir, merging contents..."
+      rsync -a "$inner_dir/" "$dir/"  # Unisce i contenuti della sottodirectory nella directory padre
+      rm -rf "$inner_dir"  # Elimina la directory duplicata
+    fi
+  fi
+done
+
+# Copia il contenuto della cartella include in microros_include
 cp -R firmware/build/include/* $BASE_PATH/libmicroros/microros_include/
 cp -R firmware/build/libmicroros.a $BASE_PATH/libmicroros/libmicroros.a
 

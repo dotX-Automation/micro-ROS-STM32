@@ -34,8 +34,11 @@
 #include <rmw_microxrcedds_c/config.h>
 #include <rmw_microros/rmw_microros.h>
 
+#include <sensor_msgs/msg/joint_state.h>
 #include <std_msgs/msg/int32.h>
 #include "usart.h"
+#include "can.h"
+#include "lwip.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +48,29 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define TS 50
+
+#define max(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b;       \
+})
+
+#define min(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a < _b ? _a : _b;       \
+})
+
+#ifndef ETH_TX_DESC_CNT
+#define ETH_TX_DESC_CNT         4U
+#endif /* ETH_TX_DESC_CNT */
+
+#ifndef ETH_RX_DESC_CNT
+#define ETH_RX_DESC_CNT         4U
+#endif /* ETH_RX_DESC_CNT */
 
 /* USER CODE END PD */
 
@@ -55,16 +81,18 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+int i = 50;
 
+rcl_subscription_t subscriber;
+rcl_publisher_t publisher;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
-osThreadId_t DefaultPublisherandSubscriber;
-const osThreadAttr_t publisherandsubscriber_attributes = {
-  .name = "publisherandsubscriber",
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
   .stack_size = 3000 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -90,10 +118,13 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
+void subscription_callback(const void *);
+
 /* USER CODE END FunctionPrototypes */
 
-void publisherandsubscriber(void *argument);
+void StartDefaultTask(void *argument);
 
+extern void MX_LWIP_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /**
@@ -124,10 +155,11 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* creation of defaultTask */
-	DefaultPublisherandSubscriber = osThreadNew(publisherandsubscriber, NULL, &publisherandsubscriber_attributes);
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  //TaskHandle = osThreadNew(publisherandsubscriber, NULL, &Task_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -136,27 +168,32 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_publisher */
+/* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void publisherandsubscriber(void *argument)
+void StartDefaultTask(void *argument)
 {
+  /* init code for LWIP */
+  MX_LWIP_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  /* USER CODE BEGIN 5 */
-
-  // micro-ROS configuration
-
-	rmw_uros_set_custom_transport(
+  	rcl_ret_t ret;
+	ret = rmw_uros_set_custom_transport(
 		true,
 		(void *) &huart3,         //change in you want a different type of comunication for ros2-agent
 		cubemx_transport_open,
 		cubemx_transport_close,
 		cubemx_transport_write,
 		cubemx_transport_read);
+
+	if (ret != RCL_RET_OK)
+	{
+	    printf("Error setting custom transport");
+	    //return;
+	}
 
 	rcl_allocator_t freeRTOS_allocator = rcutils_get_zero_initialized_allocator();
 	freeRTOS_allocator.allocate = microros_allocate;
@@ -171,138 +208,106 @@ void publisherandsubscriber(void *argument)
 
 	// micro-ROS app
 
-	rcl_subscription_t subscriber;
-	rcl_publisher_t publisher;
 	std_msgs__msg__Int32 msg;
+
 	rclc_support_t support;
 	rcl_allocator_t allocator;
-	rcl_node_t node1;
-	rcl_node_t node2;
+	//rcl_node_t node1;
+	rcl_node_t node;
 
-	rmw_message_info_t messageInfo;
 
 	allocator = rcl_get_default_allocator();
 
 	//create init_options
-	rclc_support_init(&support, 0, NULL, &allocator);
+	ret = rclc_support_init(&support, 0, NULL, &allocator);
+	if(ret != RCL_RET_OK)
+	{
+	    printf("Error initializing support");
+	    return;
+	}
 
 	// create node
-	rclc_node_init_default(&node1, "cubemx_node", "", &support);
-	rclc_node_init_default(&node2, "cubemx_node", "", &support);
+	//rclc_node_init_default(&node1, "cubemx_node1", "", &support);
+	ret = rclc_node_init_default(&node, "cubemx_node", "", &support);
+	if(ret!= RCL_RET_OK)
+	{
+		printf("Error on node_init_default (line %d)\n", __LINE__);
+		return;
+	}
 
 	// create publisher
-	rclc_publisher_init_default(
+	ret = rclc_publisher_init_default(
 	  &publisher,
-	  &node1,
+	  &node,
 	  ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 	  "cubemx_publisher");
-
-	rclc_subscription_init_default(
-	  &subscriber,
-	  &node2,
-	  ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-	  "cubemx_subcriber");
-
-	//rclc_subscriber_init_default
-	msg.data = 0;
-	rcl_ret_t ret;
-
-	for(;;)
+	if(ret != RCL_RET_OK)
 	{
-		ret = rcl_take(&subscriber, &msg, &messageInfo, NULL);
-		if (ret == RCL_RET_OK)
-		{
-			ret = rcl_publish(&publisher, &msg, NULL);
-			if (ret != RCL_RET_OK)
-			{
-				printf("Error publishing (line %d)\n", __LINE__);
-			}
-		}
-		else
-		{
-			printf("Error subscriving (line %d)\n", __LINE__);
-		}
-
-
-		osDelay(10);
-	}
-  /* USER CODE END publisher */
-}
-
-/* USER CODE BEGIN Header_subscriber */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_subscriber */
-void subscriber(void *argument)
-{
-  /* USER CODE BEGIN subscriber */
-  /* USER CODE BEGIN 5 */
-
-  // micro-ROS configuration
-
-	rmw_uros_set_custom_transport(
-		true,
-		(void *) &huart3,         //change in you want a different type of comunication for ros2-agent
-		cubemx_transport_open,
-		cubemx_transport_close,
-		cubemx_transport_write,
-		cubemx_transport_read);
-
-	rcl_allocator_t freeRTOS_allocator = rcutils_get_zero_initialized_allocator();
-	freeRTOS_allocator.allocate = microros_allocate;
-	freeRTOS_allocator.deallocate = microros_deallocate;
-	freeRTOS_allocator.reallocate = microros_reallocate;
-	freeRTOS_allocator.zero_allocate =  microros_zero_allocate;
-
-	if (!rcutils_set_default_allocator(&freeRTOS_allocator))
-	{
-	  printf("Error on default allocators (line %d)\n", __LINE__);
+		printf("Error on publisher_init_default (line %d)\n", __LINE__);
+		return;
 	}
 
-	// micro-ROS app
-
-	rcl_subscription_t subscriber;
-	std_msgs__msg__Int32 msg;
-	rclc_support_t support;
-	rcl_allocator_t allocator;
-	rcl_node_t node;
-	rmw_message_info_t messageInfo;
-
-	allocator = rcl_get_default_allocator();
-
-	//create init_options
-	rclc_support_init(&support, 0, NULL, &allocator);
-
-	// create node
-	rclc_node_init_default(&node, "cubemx_node", "", &support);
-
-	// create publisher
-	rclc_subscription_init_default(
+	ret = rclc_subscription_init_default(
 	  &subscriber,
 	  &node,
 	  ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-	  "cubemx_subcriber");
+	  "cubemx_subscriber");
+	if(ret != RCL_RET_OK)
+	{
+		printf("Error on subscription_init_default (line %d)\n", __LINE__);
+		return;
+	}
+
+	rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
+	ret = rclc_executor_init(&executor, &support.context, 1, &allocator);
+	if(ret != RCL_RET_OK)
+	{
+		printf("Error on executor_init (line %d)\n", __LINE__);
+		return;
+	}
+
+	ret = rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA);
+	if(ret != RCL_RET_OK)
+	{
+		printf("Error on executor_add_subscription (line %d)\n", __LINE__);
+		return;
+	}
+
 
 	//rclc_subscriber_init_default
-	msg.data = 0;
 
 	for(;;)
 	{
-		rcl_ret_t ret = rcl_take(&subscriber, &msg, &messageInfo, NULL);
-		if (ret != RCL_RET_OK)
+		ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1000));  // timeout di 100 ms
+		if(ret != RCL_RET_OK)
 		{
-		printf("Error subscribing (line %d)\n", __LINE__);
+			printf("Error in executor spin_some (line %d)\n", __LINE__);
+			return;
 		}
-
-		osDelay(10);
+		//HAL_Delay(100);
 	}
-  /* USER CODE END subscriber */
+  /* USER CODE END StartDefaultTask */
 }
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+void subscription_callback(const void *msgin)
+{
+	rcl_ret_t ret;
+	const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+	
+	msg1.data = msg->data;
+	//msg->data = (uint32_t)rx;
+
+	ret = rcl_publish(&publisher, &msg1, NULL);
+	if (ret != RCL_RET_OK)
+	{
+		printf("Error publishing (line %d)\n", __LINE__);
+	}
+
+	//printf("Received: %d\n", msg->data);
+}
+
 
 /* USER CODE END Application */
 
