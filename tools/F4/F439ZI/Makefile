@@ -176,8 +176,8 @@ all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET
 #######################################
 # micro-ROS addons
 #######################################
-LDFLAGS += ../../firmware/build/libmicroros.a
-C_INCLUDES += -I../../micro_ros_stm32cubemx_utils/microros_static_library/libmicroros/microros_include
+LDFLAGS += -L../../firmware/build -lmicroros
+C_INCLUDES += $(patsubst %, -I%, $(shell find ../../firmware/build/include -type d))
 
 # Add micro-ROS utils
 C_SOURCES += ../../micro_ros_stm32cubemx_utils/extra_sources/custom_memory_manager.c
