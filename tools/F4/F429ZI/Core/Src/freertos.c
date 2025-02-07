@@ -94,6 +94,7 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
+
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 bool cubemx_transport_open(struct uxrCustomTransport * transport);
@@ -168,7 +169,7 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_publisher */
 /**
   * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
